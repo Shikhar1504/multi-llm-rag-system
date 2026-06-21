@@ -101,12 +101,14 @@ class RAGPipeline:
         rewritten = invoke_text(self._llm, "You rewrite search queries.", prompt).strip()
         return rewritten or query
 
-    def _generate_variants(self, query: str) -> list[str]:
+    def _generate_variants(self, query: str, multi_query_count: int | None = None) -> list[str]:
         if not self._settings.enable_multi_query:
             return [query]
 
+        query_count = max(1, multi_query_count or self._settings.multi_query_count)
+
         prompt = (
-            f"Generate {self._settings.multi_query_count} alternate search queries for the same user question. "
+            f"Generate {query_count} alternate search queries for the same user question. "
             "Return one query per line without numbering.\n\n"
             f"Question: {query}"
         )
@@ -115,7 +117,7 @@ class RAGPipeline:
         variants = [variant for variant in variants if variant]
         if query not in variants:
             variants.insert(0, query)
-        return variants[: max(1, self._settings.multi_query_count)]
+        return variants[:query_count]
 
     @staticmethod
     def _dedupe_documents(documents: Iterable[Document]) -> list[Document]:
@@ -251,7 +253,7 @@ class RAGPipeline:
         cleaned = answer.strip()
         return cleaned or "I could not find the answer in the uploaded documents."
 
-    def retrieve(self, query: str, *, top_k: int | None = None, fetch_k: int | None = None) -> RetrievedContext:
+    def retrieve(self, query: str, *, top_k: int | None = None, fetch_k: int | None = None, multi_query_count: int | None = None) -> RetrievedContext:
         effective_top_k = top_k or self._settings.retriever_top_k
         effective_fetch_k = fetch_k or self._settings.retriever_fetch_k
         use_expansion = self._should_expand_query(query)
@@ -267,7 +269,7 @@ class RAGPipeline:
 
         variants = [rewritten_query]
         if use_expansion and self._settings.enable_multi_query:
-            variants = self._generate_variants(rewritten_query)
+            variants = self._generate_variants(rewritten_query, multi_query_count)
             used_multi_query = len(variants) > 1
             retrieval_mode = "expanded"
 
@@ -291,8 +293,8 @@ class RAGPipeline:
             retrieval_mode=retrieval_mode,
         )
 
-    def answer(self, query: str, *, top_k: int | None = None, fetch_k: int | None = None) -> tuple[str, RetrievedContext, bool]:
-        context = self.retrieve(query, top_k=top_k, fetch_k=fetch_k)
+    def answer(self, query: str, *, top_k: int | None = None, fetch_k: int | None = None, multi_query_count: int | None = None) -> tuple[str, RetrievedContext, bool]:
+        context = self.retrieve(query, top_k=top_k, fetch_k=fetch_k, multi_query_count=multi_query_count)
         if not context.documents:
             return ("I could not find the answer in the uploaded documents.", context, False)
 
@@ -302,8 +304,8 @@ class RAGPipeline:
             return answer, context, False
         return answer, context, True
 
-    def stream_answer(self, query: str, *, top_k: int | None = None, fetch_k: int | None = None) -> tuple[RetrievedContext, Iterable[str], bool]:
-        context = self.retrieve(query, top_k=top_k, fetch_k=fetch_k)
+    def stream_answer(self, query: str, *, top_k: int | None = None, fetch_k: int | None = None, multi_query_count: int | None = None) -> tuple[RetrievedContext, Iterable[str], bool]:
+        context = self.retrieve(query, top_k=top_k, fetch_k=fetch_k, multi_query_count=multi_query_count)
         if not context.documents:
             return context, ["I could not find the answer in the uploaded documents."], False
 

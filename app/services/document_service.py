@@ -66,6 +66,10 @@ class DocumentService:
                 (document_id, file_name, sha256, chunk_count),
             )
 
+    def _delete_document(self, sha256: str) -> None:
+        with self._connect() as connection:
+            connection.execute("DELETE FROM documents WHERE sha256 = ?", (sha256,))
+
     async def ingest_upload(self, upload_file: UploadFile) -> dict[str, object]:
         suffix = Path(upload_file.filename or "document.pdf").suffix or ".pdf"
         temp_path = self._settings.uploads_dir / f"{hashlib.sha1((upload_file.filename or 'document').encode()).hexdigest()}{suffix}"
@@ -88,16 +92,13 @@ class DocumentService:
                     "skipped": True,
                 }
 
-            chunks = load_pdf_documents(temp_path, self._settings, upload_file.filename or temp_path.name)
-            self._vector_store.add_documents(chunks)
-
             document_id = file_hash[:16]
             try:
                 self._register_document(
                     document_id=document_id,
                     file_name=upload_file.filename or temp_path.name,
                     sha256=file_hash,
-                    chunk_count=len(chunks),
+                    chunk_count=0,
                 )
             except IntegrityError:
                 existing = self._lookup_checksum(file_hash)
@@ -111,6 +112,19 @@ class DocumentService:
                         "skipped": True,
                     }
                 raise
+
+            chunks = load_pdf_documents(temp_path, self._settings, upload_file.filename or temp_path.name)
+            try:
+                self._vector_store.add_documents(chunks)
+            except Exception:
+                self._delete_document(file_hash)
+                raise
+
+            with self._connect() as connection:
+                connection.execute(
+                    "UPDATE documents SET chunk_count = ? WHERE sha256 = ?",
+                    (len(chunks), file_hash),
+                )
 
             self._logger.info("Finished ingestion for file %s", upload_file.filename or temp_path.name)
             return {

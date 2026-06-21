@@ -12,6 +12,8 @@ from app.core.config import Settings
 FALLBACK_RESPONSE = "I could not generate a response at this time."
 LLM_TIMEOUT_SECONDS = 30
 logger = logging.getLogger(__name__)
+MISTRAL_FALLBACK_MODEL = "mistral-small-latest"
+HUGGINGFACE_FALLBACK_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
 # Reused globally so invoke/stream calls do not create new workers each time.
 # Application shutdown should handle executor lifecycle cleanup.
 _LLM_EXECUTOR = ThreadPoolExecutor(max_workers=4)
@@ -96,9 +98,10 @@ def _fallback_chat_model(
 ):
     for provider in ("mistral", "huggingface"):
         try:
+            fallback_model_name = MISTRAL_FALLBACK_MODEL if provider == "mistral" else HUGGINGFACE_FALLBACK_MODEL
             return _build_chat_model(
                 provider,
-                model_name,
+                fallback_model_name,
                 temperature,
                 gemini_api_key=gemini_api_key,
                 mistral_api_key=mistral_api_key,

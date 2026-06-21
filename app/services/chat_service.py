@@ -19,11 +19,17 @@ class ChatService:
     def answer(self, request: QueryRequest, *, top_k: int | None = None, multi_query_count: int | None = None) -> QueryResponse:
         self._history.add_message(request.session_id, "user", request.question)
 
-        answer, context, context_found = self._pipeline.answer(
-            request.question,
-            top_k=top_k if top_k is not None else request.top_k,
-            fetch_k=self._settings.retriever_fetch_k,
-        )
+        pipeline_kwargs = {
+            "top_k": top_k if top_k is not None else request.top_k,
+            "multi_query_count": multi_query_count if multi_query_count is not None else request.multi_query_count,
+            "fetch_k": self._settings.retriever_fetch_k,
+        }
+
+        try:
+            answer, context, context_found = self._pipeline.answer(request.question, **pipeline_kwargs)
+        except TypeError:
+            pipeline_kwargs.pop("multi_query_count", None)
+            answer, context, context_found = self._pipeline.answer(request.question, **pipeline_kwargs)
 
         sources = context.sources
         self._history.add_message(request.session_id, "assistant", answer, sources=sources)
@@ -39,11 +45,17 @@ class ChatService:
     def stream_answer(self, request: QueryRequest, *, top_k: int | None = None, multi_query_count: int | None = None):
         self._history.add_message(request.session_id, "user", request.question)
 
-        context, stream, context_found = self._pipeline.stream_answer(
-            request.question,
-            top_k=top_k if top_k is not None else request.top_k,
-            fetch_k=self._settings.retriever_fetch_k,
-        )
+        pipeline_kwargs = {
+            "top_k": top_k if top_k is not None else request.top_k,
+            "multi_query_count": multi_query_count if multi_query_count is not None else request.multi_query_count,
+            "fetch_k": self._settings.retriever_fetch_k,
+        }
+
+        try:
+            context, stream, context_found = self._pipeline.stream_answer(request.question, **pipeline_kwargs)
+        except TypeError:
+            pipeline_kwargs.pop("multi_query_count", None)
+            context, stream, context_found = self._pipeline.stream_answer(request.question, **pipeline_kwargs)
 
         def generator():
             payload = {
