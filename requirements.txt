@@ -1,0 +1,64 @@
+langchain
+langchain-core
+langchain-community
+langchain-text-splitters
+
+# LLM Providers
+
+langchain-openai
+langchain-mistralai
+openai
+mistralai
+langchain-pinecone
+
+# Vector Database
+
+chromadb
+pinecone
+
+# Embedding Models
+
+sentence-transformers
+
+# Document Loaders dependencies
+
+pypdf
+unstructured
+beautifulsoup4
+lxml
+
+# Text Processing
+
+tiktoken
+
+# Environment Variables
+
+python-dotenv
+pydantic-settings
+
+# Data Handling
+
+pandas
+numpy
+
+# API / App Layer (optional but common in RAG apps)
+
+fastapi
+uvicorn
+python-multipart
+aiofiles
+
+# UI (optional)
+
+streamlit
+
+# Testing
+
+pytest
+pytest-asyncio
+httpx
+
+# Utilities
+
+tqdm
+requests
