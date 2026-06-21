@@ -66,27 +66,58 @@ The backend follows a modular structure with clear separation of concerns:
 
 ## Setup Instructions
 
-### 1. Clone the repository
+### Recommended: Docker Setup (Production Ready)
 
-```powershell
+Docker is the easiest and most reliable way to run this project. It guarantees a strict Python 3.11 environment, handles known dependency conflicts gracefully, and cleanly pre-downloads the HuggingFace machine learning models into the image so they are instantly available at runtime without delays.
+
+#### Why Docker is preferred:
+- Avoids Python version issues (strictly uses 3.11)
+- Avoids pip dependency conflicts
+- No model download delay at runtime
+- Provides a reproducible environment out-of-the-box
+
+#### 1. Clone the repository
+```bash
 git clone https://github.com/Shikhar1504/multi-llm-rag-system.git
 cd multi-llm-rag-system
 ```
 
-### 2. Create a Python virtual environment
+#### 2. Setup Environment Variables
+```bash
+cp .env.example .env
+cp frontend/.env.example frontend/.env
+```
+*Open `.env` and fill in your API keys (e.g., `MISTRAL_API_KEY`, `OPENAI_API_KEY`) based on your preferred provider.*
+
+#### 3. Build and Start the Application
+```bash
+docker-compose up --build -d
+```
+
+#### 4. Access the App
+- **Frontend UI:** http://localhost:5173
+- **Backend API:** http://localhost:8000
+
+---
+
+### Alternative: Local Development (For Development Only)
+
+*Note: This method is not recommended for production. It requires Python 3.11 explicitly, and ML models will be downloaded on the first run, which may cause a significant delay.*
+
+#### 1. Create a Python virtual environment
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\activate
 ```
 
-### 3. Install backend dependencies
+#### 2. Install backend dependencies
 
 ```powershell
 pip install -r requirements.txt
 ```
 
-### 4. Install frontend dependencies
+#### 3. Install frontend dependencies
 
 ```powershell
 Set-Location frontend
@@ -94,14 +125,14 @@ npm install
 Set-Location ..
 ```
 
-### 5. Create environment files
+#### 4. Create environment files
 
 ```powershell
 Copy-Item .env.example .env
 Copy-Item frontend\.env.example frontend\.env
 ```
 
-### 6. Add provider keys
+#### 5. Add provider keys
 
 Fill in the required API keys in `.env` based on the provider you select.
 
@@ -160,14 +191,14 @@ Fill in the required API keys in `.env` based on the provider you select.
 - `ENABLE_RERANKING` - Enables or disables reranking.
 - `ENABLE_QUERY_REWRITE` - Enables or disables query rewriting.
 
-## Running the Project
+## Running the Project Locally (If not using Docker)
 
 ### Start the backend
 
-From the repository root:
+From the repository root, start the FastAPI backend using Uvicorn (the production ASGI server):
 
 ```powershell
-python main.py
+uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
 The API will be available at:
@@ -452,5 +483,4 @@ npm run build
 - Move file storage to object storage
 - Add background jobs for large document ingestion
 - Add observability, tracing, and metrics
-- Add deployment automation and containerization
 - Add rate limiting and abuse protection

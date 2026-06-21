@@ -1,47 +1,73 @@
 name: CI
 
 on:
-  push:
-  pull_request:
+push:
+pull_request:
 
 jobs:
-  backend:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+backend:
+runs-on: ubuntu-latest
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
+```
+steps:
+  - name: Checkout
+    uses: actions/checkout@v4
 
-      - name: Install backend dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+  # Match Docker Python version
+  - name: Set up Python
+    uses: actions/setup-python@v5
+    with:
+      python-version: "3.11"
 
-      - name: Run backend tests
-        run: python -m unittest discover -s tests -v
+  # Cache pip (faster builds)
+  - name: Cache pip
+    uses: actions/cache@v4
+    with:
+      path: ~/.cache/pip
+      key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+      restore-keys: |
+        ${{ runner.os }}-pip-
 
-  frontend:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: frontend
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+  - name: Install dependencies
+    run: |
+      python -m pip install --upgrade pip
+      pip install --no-cache-dir -r requirements.txt
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+  - name: Run backend tests
+    run: python -m unittest discover -s tests -v
 
-      - name: Install frontend dependencies
-        run: npm ci
+  # 🔥 CRITICAL: Ensure Docker build works
+  - name: Build backend Docker image
+    run: docker build -t rag-backend .
+```
 
-      - name: Build frontend
-        run: npm run build
+frontend:
+runs-on: ubuntu-latest
+
+```
+defaults:
+  run:
+    working-directory: frontend
+
+steps:
+  - name: Checkout
+    uses: actions/checkout@v4
+
+  # Match Docker Node version
+  - name: Set up Node
+    uses: actions/setup-node@v4
+    with:
+      node-version: "20"
+      cache: npm
+      cache-dependency-path: frontend/package-lock.json
+
+  - name: Install dependencies
+    run: npm ci
+
+  - name: Build frontend
+    run: npm run build
+
+  # 🔥 Ensure frontend Docker also builds
+  - name: Build frontend Docker image
+    run: docker build -t rag-frontend .
+```
