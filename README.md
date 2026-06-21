@@ -1,86 +1,168 @@
 # Production RAG Assistant
 
-A modular Retrieval-Augmented Generation application built with FastAPI, LangChain, Chroma or Pinecone, and a React + Vite frontend.
+Production RAG Assistant is a modular Retrieval-Augmented Generation system built with FastAPI, LangChain-style abstractions, pluggable LLM providers, and a vector database layer for document search and grounded question answering. It supports PDF ingestion, adaptive retrieval, streaming responses, and persistent chat history. The system is designed to work with multiple providers, with Mistral, Gemini, and HuggingFace as primary options and OpenAI as an optional fallback.
 
-## Overview
+## Key Features
 
-This project upgrades a basic RAG prototype into a production-oriented structure with clear separation of concerns:
+- PDF document ingestion and upload handling
+- Recursive chunking with configurable chunk size and overlap
+- Embedding generation with provider-based selection
+- Vector search with Chroma as the local default and Pinecone support for managed deployments
+- Adaptive retrieval pipeline:
+  - query rewriting
+  - multi-query retrieval
+  - optional reranking
+- Streaming answer generation
+- Source attribution in responses
+- Multi-provider LLM support:
+  - Mistral
+  - Gemini
+  - HuggingFace
+  - optional OpenAI
+- Chat history persistence with SQLite
+- Duplicate document protection during ingestion
+- Clean API layer with upload, query, history, and health endpoints
+- Optional React + Vite frontend for chat interaction
 
-- FastAPI backend for upload, query, and history APIs
-- Pluggable vector store layer with Chroma as the local fallback and Pinecone as the scalable option
-- Query rewriting, multi-query retrieval, optional reranking, and metadata-aware chunking
-- Streaming chat frontend with PDF upload and conversation history
-- Basic persistence for indexed documents and chat history
+## Architecture Overview
 
-## Project Structure
+The backend follows a modular structure with clear separation of concerns:
 
-- `main.py` - backend entry point
-- `app/core` - configuration, app factory, logging, and LLM helpers
-- `app/api` - HTTP routes and dependency wiring
-- `app/models` - request and response schemas
-- `app/rag` - ingestion, embeddings, pipeline, and vector store adapters
-- `app/services` - document ingestion, chat orchestration, and history persistence
-- `frontend` - React + Vite chat UI
-- `tests` - backend unit tests
+- `app/api`  
+  HTTP routes and dependency wiring. This is the thin API layer that exposes upload, query, history, and health endpoints.
 
-## Features
+- `app/services`  
+  Business logic for document ingestion, chat orchestration, and history persistence.
 
-- Recursive text splitting with configurable chunk size and overlap
-- Metadata support for source, page number, and chunk index
-- Configurable top-k retrieval
-- Multi-query retrieval for better recall
-- Optional reranking layer
-- Query rewriting before retrieval
-- Source attribution in answers
-- No-context fallback to reduce hallucination
-- Streaming responses from the backend to the frontend
+- `app/rag`  
+  RAG pipeline logic, including ingestion, embeddings, retrieval, reranking, vector store adapters, and answer assembly.
+
+- `app/core`  
+  Application configuration, settings, LLM helper functions, logging, and FastAPI app creation.
+
+### Data Flow
+
+1. Upload a PDF document.
+2. The document is chunked into smaller segments.
+3. Each chunk is embedded.
+4. Chunks are stored in the vector database.
+5. A user query is rewritten if needed.
+6. The retriever performs direct or multi-query search.
+7. Relevant chunks may be reranked.
+8. The answer is generated from retrieved context.
+9. Sources are returned with the response.
+10. User and assistant messages are persisted in SQLite history.
 
 ## Tech Stack
 
-- Python 3.12+
-- FastAPI
-- LangChain
-- ChromaDB
-- Pinecone optional
-- React 19
-- Vite
+- Backend: FastAPI
+- RAG / orchestration: LangChain-style components
+- LLM providers: Mistral, Gemini, HuggingFace, optional OpenAI
+- Embeddings: HuggingFace by default, OpenAI optional, Gemini optional
+- Vector database: Chroma locally, Pinecone optional
+- Database: SQLite
+- Frontend: React 19 + Vite
+- Document parsing: PDF loader + recursive text splitter
 
-## Setup
+## Setup Instructions
 
-### 1. Backend environment
+### 1. Clone the repository
 
-Create a virtual environment and install the backend dependencies:
+```powershell
+git clone https://github.com/Shikhar1504/multi-llm-rag-system.git
+cd multi-llm-rag-system
+```
+
+### 2. Create a Python virtual environment
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\activate
+```
+
+### 3. Install backend dependencies
+
+```powershell
 pip install -r requirements.txt
 ```
 
-Copy the example environment file and fill in any provider keys you want to use:
-
-```powershell
-Copy-Item .env.example .env
-```
-
-### 2. Frontend environment
-
-Install the frontend dependencies:
+### 4. Install frontend dependencies
 
 ```powershell
 Set-Location frontend
 npm install
+Set-Location ..
 ```
 
-If needed, create a frontend environment file:
+### 5. Create environment files
 
 ```powershell
 Copy-Item .env.example .env
+Copy-Item frontend\.env.example frontend\.env
 ```
 
-## Run Locally
+### 6. Add provider keys
 
-### Backend
+Fill in the required API keys in `.env` based on the provider you select.
+
+## Environment Variables
+
+### Application
+
+- `APP_NAME` - Display name for the API application.
+- `APP_VERSION` - Application version string.
+- `DEBUG` - Enables FastAPI debug mode.
+- `API_PREFIX` - Base prefix for all API routes.
+- `HOST` - Backend host address.
+- `PORT` - Backend port.
+- `RELOAD` - Enables autoreload in development.
+- `CORS_ORIGINS` - Comma-separated list of allowed frontend origins.
+
+### Storage
+
+- `VECTOR_STORE_BACKEND` - Vector store backend: `chroma` or `pinecone`.
+- `CHROMA_DIR` - Local Chroma persistence directory.
+- `HISTORY_DB_PATH` - SQLite database path for chat history.
+- `REGISTRY_DB_PATH` - SQLite database path for document registry.
+- `PINECONE_API_KEY` - Pinecone API key.
+- `PINECONE_INDEX_NAME` - Pinecone index name.
+- `PINECONE_NAMESPACE` - Pinecone namespace.
+
+### LLM Providers
+
+- `LLM_PROVIDER` - Selected chat provider: `gemini`, `mistral`, `huggingface`, or `openai`.
+- `LLM_MODEL` - Model name or repository id for the selected provider.
+- `TEMPERATURE` - Generation temperature.
+- `GEMINI_API_KEY` - Gemini API key.
+- `MISTRAL_API_KEY` - Mistral API key.
+- `HUGGINGFACE_API_KEY` - HuggingFace token or API key.
+- `OPENAI_API_KEY` - OpenAI API key.
+
+### Embeddings
+
+- `EMBEDDINGS_PROVIDER` - Embedding provider: `local`, `gemini`, or `openai`.
+- `EMBEDDINGS_MODEL` - Embedding model for local or Gemini embedding backends.
+- `OPENAI_EMBEDDINGS_MODEL` - OpenAI embedding model name.
+
+### Retrieval Controls
+
+- `CHUNK_SIZE` - Chunk size for recursive splitting.
+- `CHUNK_OVERLAP` - Overlap between chunks.
+- `RETRIEVER_TOP_K` - Number of top results to return from retrieval.
+- `RETRIEVER_FETCH_K` - Number of documents fetched before MMR selection.
+- `MULTI_QUERY_COUNT` - Number of generated query variants for multi-query retrieval.
+- `RERANK_TOP_K` - Number of chunks kept after reranking.
+- `RERANKER_MODEL_NAME` - Cross-encoder reranker model name.
+- `SIMPLE_QUERY_MAX_WORDS` - Heuristic threshold for treating a query as simple.
+- `SIMPLE_QUERY_MAX_CHARS` - Character threshold for treating a query as simple.
+- `MAX_CONTEXT_CHARS` - Maximum context size passed to the LLM.
+- `ENABLE_MULTI_QUERY` - Enables or disables multi-query retrieval.
+- `ENABLE_RERANKING` - Enables or disables reranking.
+- `ENABLE_QUERY_REWRITE` - Enables or disables query rewriting.
+
+## Running the Project
+
+### Start the backend
 
 From the repository root:
 
@@ -88,9 +170,13 @@ From the repository root:
 python main.py
 ```
 
-The FastAPI app runs at `http://127.0.0.1:8000` by default.
+The API will be available at:
 
-### Frontend
+```text
+http://127.0.0.1:8000
+```
+
+### Start the frontend
 
 From the `frontend` folder:
 
@@ -98,26 +184,55 @@ From the `frontend` folder:
 npm run dev
 ```
 
-The Vite app runs at `http://localhost:5173` by default and proxies `/api` requests to the backend.
+The frontend will typically run at:
+
+```text
+http://localhost:5173
+```
+
+The frontend proxies `/api` requests to the backend.
 
 ## API Endpoints
 
-- `POST /api/upload` - upload and index a PDF document
-- `POST /api/query` - ask a question against the indexed documents
-- `GET /api/history?session_id=...` - fetch chat history for a session
-- `GET /api/health` - health check
+### `POST /api/upload`
 
-### Upload
+Upload and index a PDF document.
 
-Send a multipart form upload with a `file` field containing a PDF.
+#### Request
 
-### Query
+- Content type: `multipart/form-data`
+- Field: `file`
 
-Example request body:
+#### Example
+
+```powershell
+curl -X POST "http://127.0.0.1:8000/api/upload" ^
+  -F "file=@sample.pdf"
+```
+
+#### Response example
 
 ```json
 {
-  "question": "What is the document about?",
+  "document_id": "a1b2c3d4e5f6g7h8",
+  "file_name": "sample.pdf",
+  "status": "indexed",
+  "chunk_count": 24,
+  "skipped": false
+}
+```
+
+---
+
+### `POST /api/query`
+
+Ask a question against the indexed documents.
+
+#### Request body
+
+```json
+{
+  "question": "What is this document about?",
   "session_id": "default",
   "stream": true,
   "top_k": 4,
@@ -127,24 +242,197 @@ Example request body:
 }
 ```
 
-When `stream` is enabled, the response uses newline-delimited JSON events.
+#### Example
 
-## Environment Variables
+```powershell
+curl -X POST "http://127.0.0.1:8000/api/query" ^
+  -H "Content-Type: application/json" ^
+  -d "{\"question\":\"What is this document about?\",\"session_id\":\"default\",\"stream\":false}"
+```
 
-Key backend settings are defined in `.env.example`.
+#### Response example
 
-Important values:
+```json
+{
+  "answer": "The document discusses ...",
+  "rewritten_query": "document summary",
+  "sources": [
+    {
+      "source": "sample.pdf",
+      "page": 2,
+      "chunk_id": "0",
+      "score": null
+    }
+  ],
+  "context_found": true,
+  "session_id": "default",
+  "created_at": "2026-06-21T12:00:00Z"
+}
+```
 
-- `VECTOR_STORE_BACKEND` - `chroma` or `pinecone`
-- `EMBEDDINGS_PROVIDER` - `local` or `openai`
-- `LLM_PROVIDER` - `mistral` or `openai`
-- `CHUNK_SIZE` and `CHUNK_OVERLAP` - text splitting controls
-- `RETRIEVER_TOP_K` and `RETRIEVER_FETCH_K` - retrieval tuning
-- `ENABLE_MULTI_QUERY`, `ENABLE_RERANKING`, `ENABLE_QUERY_REWRITE` - RAG behavior toggles
+When `stream` is enabled, the backend returns newline-delimited JSON events.
+
+---
+
+### `GET /api/history`
+
+Fetch chat history for a session.
+
+#### Query parameters
+
+- `session_id` - Session identifier
+
+#### Example
+
+```powershell
+curl "http://127.0.0.1:8000/api/history?session_id=default"
+```
+
+#### Response example
+
+```json
+{
+  "session_id": "default",
+  "messages": [
+    {
+      "role": "user",
+      "content": "What is this document about?",
+      "created_at": "2026-06-21T12:00:00Z",
+      "sources": []
+    },
+    {
+      "role": "assistant",
+      "content": "The document discusses ...",
+      "created_at": "2026-06-21T12:00:10Z",
+      "sources": [
+        {
+          "source": "sample.pdf",
+          "page": 2,
+          "chunk_id": "0",
+          "score": null
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+### `GET /api/health`
+
+Health check endpoint.
+
+#### Example
+
+```powershell
+curl "http://127.0.0.1:8000/api/health"
+```
+
+#### Response
+
+```json
+{
+  "status": "ok"
+}
+```
+
+## Example Usage
+
+### 1. Upload a PDF
+
+Send the PDF to `POST /api/upload`. The backend stores the file temporarily, chunks it, embeds it, and writes it into the selected vector store.
+
+### 2. Ask a query
+
+Send a question to `POST /api/query`. The system may rewrite the query, generate multiple query variants, rerank retrieved chunks, and then answer using only the retrieved context.
+
+### 3. Streaming response format
+
+When `stream: true`, the backend returns newline-delimited JSON events.
+
+Example stream:
+
+```text
+{"type":"sources","rewritten_query":"document summary","context_found":true,"retrieval_mode":"expanded+reranked","context_truncated":false,"sources":[...]}
+{"type":"token","content":"The"}
+{"type":"token","content":" document"}
+{"type":"token","content":" discusses"}
+{"type":"done","answer":"The document discusses ..."}
+```
+
+If streaming fails, a fallback error event is emitted and the response is finalized safely.
+
+## Project Structure
+
+```text
+.
+├── main.py
+├── app
+│   ├── api
+│   │   ├── deps.py
+│   │   └── routes.py
+│   ├── core
+│   │   ├── app.py
+│   │   ├── config.py
+│   │   ├── llm.py
+│   │   └── logging.py
+│   ├── models
+│   │   └── schemas.py
+│   ├── rag
+│   │   ├── embeddings.py
+│   │   ├── ingestion.py
+│   │   ├── pipeline.py
+│   │   └── vector_stores
+│   │       ├── base.py
+│   │       ├── chroma.py
+│   │       ├── factory.py
+│   │       └── pinecone.py
+│   └── services
+│       ├── chat_service.py
+│       ├── document_service.py
+│       └── history_service.py
+├── frontend
+│   ├── index.html
+│   ├── package.json
+│   ├── src
+│   └── vite.config.ts
+├── tests
+│   └── test_pipeline.py
+├── requirements.txt
+├── README.md
+├── .env.example
+└── data
+```
+
+### Brief explanation
+
+- `main.py` - FastAPI entry point.
+- `app/api` - request/response endpoints and dependency wiring.
+- `app/core` - configuration, provider setup, and application bootstrap.
+- `app/models` - Pydantic schemas.
+- `app/rag` - ingestion, embeddings, retrieval, reranking, and vector store adapters.
+- `app/services` - ingestion, chat, and history business logic.
+- `frontend` - React-based UI for chat, upload, and history.
+- `tests` - backend unit tests.
+
+## Configuration Options
+
+The system is driven by `.env` values, especially:
+
+- `CHUNK_SIZE` and `CHUNK_OVERLAP` to control document splitting
+- `RETRIEVER_TOP_K` and `RETRIEVER_FETCH_K` to control retrieval breadth
+- `MULTI_QUERY_COUNT` to control multi-query retrieval
+- `ENABLE_QUERY_REWRITE` to toggle query rewriting
+- `ENABLE_MULTI_QUERY` to toggle multi-query retrieval
+- `ENABLE_RERANKING` to toggle reranking
+- `LLM_PROVIDER` to switch between `mistral`, `gemini`, `huggingface`, and `openai`
+- `EMBEDDINGS_PROVIDER` to switch between `local`, `gemini`, and `openai`
+- `VECTOR_STORE_BACKEND` to switch between `chroma` and `pinecone`
 
 ## Testing
 
-Run backend tests from the repository root:
+Run backend tests:
 
 ```powershell
 python -m unittest discover -s tests -v
@@ -157,16 +445,12 @@ Set-Location frontend
 npm run build
 ```
 
-## Notes
+## Future Improvements
 
-- Chroma is the default local vector store and persists under `data/chroma`.
-- Pinecone support is available through the vector-store abstraction if you want a managed deployment later.
-- Chat history is stored in a lightweight SQLite database under `data/history.sqlite3`.
-
-## Next Improvements
-
-- Dockerize backend and frontend
-- Add authentication and document-level access control
-- Move uploads to object storage
-- Add background indexing jobs for large file sets
-- Add observability with structured logs and metrics
+- Add authentication and authorization
+- Add document-level access control
+- Move file storage to object storage
+- Add background jobs for large document ingestion
+- Add observability, tracing, and metrics
+- Add deployment automation and containerization
+- Add rate limiting and abuse protection

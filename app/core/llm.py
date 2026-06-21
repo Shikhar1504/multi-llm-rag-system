@@ -124,6 +124,15 @@ def _build_chat_model(
     huggingface_api_key: str | None,
     openai_api_key: str | None,
 ):
+    if provider == "gemini" and not gemini_api_key:
+        raise RuntimeError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
+
+    if provider == "mistral" and not mistral_api_key:
+        raise RuntimeError("MISTRAL_API_KEY is required when LLM_PROVIDER=mistral")
+
+    if provider == "openai" and not openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is required when LLM_PROVIDER=openai")
+
     if provider == "gemini":
         from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -135,16 +144,20 @@ def _build_chat_model(
         return ChatMistralAI(model=model_name, temperature=temperature, mistral_api_key=mistral_api_key)
 
     if provider == "huggingface":
-        try:
-            from langchain_huggingface import HuggingFaceEndpoint
+        if huggingface_api_key:
+            try:
+                from langchain_huggingface import HuggingFaceEndpoint
 
-            return HuggingFaceEndpoint(
-                repo_id=model_name,
-                huggingfacehub_api_token=huggingface_api_key,
-                task="text-generation",
-                temperature=temperature,
-            )
-        except Exception:
+                return HuggingFaceEndpoint(
+                    repo_id=model_name,
+                    huggingfacehub_api_token=huggingface_api_key,
+                    task="text-generation",
+                    temperature=temperature,
+                )
+            except Exception:
+                logger.warning("HuggingFace endpoint unavailable, falling back to local pipeline.")
+
+        try:
             from langchain_community.llms import HuggingFacePipeline
 
             try:
@@ -154,6 +167,8 @@ def _build_chat_model(
 
             generator = hf_pipeline("text-generation", model=model_name)
             return HuggingFacePipeline(pipeline=generator)
+        except Exception as exc:
+            raise RuntimeError("Failed to initialize HuggingFace LLM support") from exc
 
     if provider == "openai":
         from langchain_openai import ChatOpenAI

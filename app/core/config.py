@@ -2,7 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -65,22 +65,6 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [origin.strip() for origin in value.split(",") if origin.strip()]
         return value
-
-    @model_validator(mode="after")
-    def validate_provider_credentials(self):
-        if self.llm_provider == "gemini" and not self.gemini_api_key:
-            raise ValueError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
-        if self.llm_provider == "mistral" and not self.mistral_api_key:
-            raise ValueError("MISTRAL_API_KEY is required when LLM_PROVIDER=mistral")
-        if self.llm_provider == "openai" and not self.openai_api_key:
-            raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER=openai")
-
-        if self.embeddings_provider == "gemini" and not self.gemini_api_key:
-            raise ValueError("GEMINI_API_KEY is required when EMBEDDINGS_PROVIDER=gemini")
-        if self.embeddings_provider == "openai" and not self.openai_api_key:
-            raise ValueError("OPENAI_API_KEY is required when EMBEDDINGS_PROVIDER=openai")
-
-        return self
 
     def ensure_directories(self) -> None:
         for path in (self.data_dir, self.uploads_dir, self.chroma_dir):

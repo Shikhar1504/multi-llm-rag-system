@@ -31,8 +31,14 @@ def _cached_embeddings(provider: str, model_name: str, api_key: str | None):
 
 
 def build_embeddings(settings: Settings):
-    api_key = getattr(settings, "openai_api_key", None)
     provider = settings.embeddings_provider
+    if provider == "gemini" and not settings.gemini_api_key:
+        raise RuntimeError("GEMINI_API_KEY is required when EMBEDDINGS_PROVIDER=gemini")
+
+    if provider == "openai" and not settings.openai_api_key:
+        raise RuntimeError("OPENAI_API_KEY is required when EMBEDDINGS_PROVIDER=openai")
+
+    api_key = settings.gemini_api_key if provider == "gemini" else settings.openai_api_key if provider == "openai" else None
     model_name = settings.embeddings_model if provider != "openai" else settings.openai_embeddings_model
 
     try:
